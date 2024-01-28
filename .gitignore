@@ -1,4 +1,4 @@
 models
 python310
 __pycache__
-*.exe
+**/*.exe
