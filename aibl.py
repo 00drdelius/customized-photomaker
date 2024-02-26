@@ -8,7 +8,7 @@ from diffusers.utils import load_image
 from diffusers import EulerDiscreteScheduler
 
 from huggingface_hub import hf_hub_download
-import spaces
+# import spaces
 import gradio as gr
 
 from photomaker import PhotoMakerStableDiffusionXLPipeline
@@ -31,71 +31,75 @@ STYLE_NAMES = list(styles.keys())
 DEFAULT_STYLE_NAME = "Photographic (Default)"
 
 # download PhotoMaker checkpoint to cache
-photomaker_ckpt = hf_hub_download(repo_id="TencentARC/PhotoMaker", filename="photomaker-v1.bin", repo_type="model")
+# photomaker_ckpt = hf_hub_download(repo_id="TencentARC/PhotoMaker", filename="photomaker-v1.bin", repo_type="model")
 
-if device == "mps":
-    torch_dtype = torch.float16
-else:
-    torch_dtype = torch.bfloat16
-pipe = PhotoMakerStableDiffusionXLPipeline.from_pretrained(
-    base_model_path, 
-    torch_dtype=torch_dtype,
-    use_safetensors=True, 
-    variant="fp16",
-    # local_files_only=True,
-).to(device)
+# if device == "mps":
+#     torch_dtype = torch.float16
+# else:
+#     torch_dtype = torch.bfloat16
+# pipe = PhotoMakerStableDiffusionXLPipeline.from_pretrained(
+#     base_model_path, 
+#     torch_dtype=torch_dtype,
+#     use_safetensors=True, 
+#     variant="fp16",
+#     # local_files_only=True,
+# ).to(device)
 
-pipe.load_photomaker_adapter(
-    os.path.dirname(photomaker_ckpt),
-    subfolder="",
-    weight_name=os.path.basename(photomaker_ckpt),
-    trigger_word="img"
-)
-pipe.id_encoder.to(device)
+# pipe.load_photomaker_adapter(
+#     os.path.dirname(photomaker_ckpt),
+#     subfolder="",
+#     weight_name=os.path.basename(photomaker_ckpt),
+#     trigger_word="img"
+# )
+# pipe.id_encoder.to(device)
 
-pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
-# pipe.set_adapters(["photomaker"], adapter_weights=[1.0])
-pipe.fuse_lora()
+# pipe.scheduler = EulerDiscreteScheduler.from_config(pipe.scheduler.config)
+# # pipe.set_adapters(["photomaker"], adapter_weights=[1.0])
+# pipe.fuse_lora()
 
-@spaces.GPU(enable_queue=True)
-def generate_image(upload_images, prompt, negative_prompt, style_name, num_steps, style_strength_ratio, num_outputs, guidance_scale, seed, progress=gr.Progress(track_tqdm=True)):
-    # check the trigger word
-    image_token_id = pipe.tokenizer.convert_tokens_to_ids(pipe.trigger_word)
-    input_ids = pipe.tokenizer.encode(prompt)
-    if image_token_id not in input_ids:
-        raise gr.Error(f"Cannot find the trigger word '{pipe.trigger_word}' in text prompt! Please refer to step 2️⃣")
+# @spaces.GPU(enable_queue=True)
+# def generate_image(upload_images, prompt, negative_prompt, style_name, num_steps, style_strength_ratio, num_outputs, guidance_scale, seed, progress=gr.Progress(track_tqdm=True)):
+#     # check the trigger word
+#     image_token_id = pipe.tokenizer.convert_tokens_to_ids(pipe.trigger_word)
+#     input_ids = pipe.tokenizer.encode(prompt)
+#     if image_token_id not in input_ids:
+#         raise gr.Error(f"Cannot find the trigger word '{pipe.trigger_word}' in text prompt! Please refer to step 2️⃣")
 
-    if input_ids.count(image_token_id) > 1:
-        raise gr.Error(f"Cannot use multiple trigger words '{pipe.trigger_word}' in text prompt!")
+#     if input_ids.count(image_token_id) > 1:
+#         raise gr.Error(f"Cannot use multiple trigger words '{pipe.trigger_word}' in text prompt!")
 
-    # apply the style template
-    prompt, negative_prompt = apply_style(style_name, prompt, negative_prompt)
+#     # apply the style template
+#     prompt, negative_prompt = apply_style(style_name, prompt, negative_prompt)
 
-    if upload_images is None:
-        raise gr.Error(f"Cannot find any input face image! Please refer to step 1️⃣")
+#     if upload_images is None:
+#         raise gr.Error(f"Cannot find any input face image! Please refer to step 1️⃣")
 
-    input_id_images = []
-    for img in upload_images:
-        input_id_images.append(load_image(img))
+#     input_id_images = []
+#     for img in upload_images:
+#         input_id_images.append(load_image(img))
     
-    generator = torch.Generator(device=device).manual_seed(seed)
+#     generator = torch.Generator(device=device).manual_seed(seed)
 
-    print("Start inference...")
-    print(f"[调试] 提示词: {prompt}, \n[调试] 反向提示词: {negative_prompt}")
-    start_merge_step = int(float(style_strength_ratio) / 100 * num_steps)
-    if start_merge_step > 30:
-        start_merge_step = 30
-    print(start_merge_step)
-    images = pipe(
-        prompt=prompt,
-        input_id_images=input_id_images,
-        negative_prompt=negative_prompt,
-        num_images_per_prompt=num_outputs,
-        num_inference_steps=num_steps,
-        start_merge_step=start_merge_step,
-        generator=generator,
-        guidance_scale=guidance_scale,
-    ).images
+#     print("Start inference...")
+#     print(f"[调试] 提示词: {prompt}, \n[调试] 反向提示词: {negative_prompt}")
+#     start_merge_step = int(float(style_strength_ratio) / 100 * num_steps)
+#     if start_merge_step > 30:
+#         start_merge_step = 30
+#     print(start_merge_step)
+#     images = pipe(
+#         prompt=prompt,
+#         input_id_images=input_id_images,
+#         negative_prompt=negative_prompt,
+#         num_images_per_prompt=num_outputs,
+#         num_inference_steps=num_steps,
+#         start_merge_step=start_merge_step,
+#         generator=generator,
+#         guidance_scale=guidance_scale,
+#     ).images
+#     return images, gr.update(visible=True)
+
+def generate_image(upload_images, prompt, negative_prompt, style_name, num_steps, style_strength_ratio, num_outputs, guidance_scale, seed, progress=gr.Progress(track_tqdm=True)):
+    images = open("examples/lenna_woman/lenna.jpg",'rb').read()
     return images, gr.update(visible=True)
 
 def swap_to_gallery(images):
@@ -153,7 +157,7 @@ logo = r"""
 <center><img src='https://photo-maker.github.io/assets/logo.png' alt='PhotoMaker logo' style="width:80px; margin-bottom:10px"></center>
 """
 title = r"""
-<h1 align="center">PhotoMaker：通过上传照片生成逼真的人类照片（本整合包由AIBL论坛提供）</h1>
+<h1 align="center">PhotoMaker：通过上传照片生成逼真的人类照片</h1>
 """
 
 description = r"""
@@ -198,13 +202,15 @@ with gr.Blocks(css=css) as demo:
             uploaded_files = gr.Gallery(label="您的图片", visible=False, columns=5, rows=1, height=200)
             with gr.Column(visible=False) as clear_button:
                 remove_and_reupload = gr.ClearButton(value="移除并上传新的图像", components=files, size="sm")
-            prompt = gr.Textbox(label="提示词",
-                       info="尝试使用类似 'a photo of a man/woman img' 的表达，'img' 是触发词",
-                       placeholder="A photo of a [man/woman img]...")
             style = gr.Dropdown(label="风格模板", choices=STYLE_NAMES, value=DEFAULT_STYLE_NAME)
             submit = gr.Button("提交")
 
             with gr.Accordion(open=False, label="高级选项"):
+                prompt = gr.Textbox(
+                    label="正向提示词",
+                    info="尝试使用类似 'a photo of a man/woman img' 的表达，'img' 是触发词",
+                    placeholder="A photo of a [man/woman img]..."
+                )
                 negative_prompt = gr.Textbox(
                     label="反向提示词", 
                     placeholder="low quality",
@@ -248,7 +254,7 @@ with gr.Blocks(css=css) as demo:
                 randomize_seed = gr.Checkbox(label="随机种子(Randomize seed)", value=True)
         with gr.Column():
             gallery = gr.Gallery(label="生成的图像")
-            usage_tips = gr.Markdown(label="PhotoMaker 的使用技巧", value=tips ,visible=False)
+            usage_tips = gr.Markdown(label="PhotoMaker 的使用技巧", value=tips ,visible=True)
 
         files.upload(fn=swap_to_gallery, inputs=files, outputs=[uploaded_files, clear_button, files])
         remove_and_reupload.click(fn=remove_back_to_files, outputs=[uploaded_files, clear_button, files])
@@ -276,6 +282,6 @@ with gr.Blocks(css=css) as demo:
         outputs=[uploaded_files, clear_button, files],
     )
     
-    gr.Markdown(article)
+    # gr.Markdown(article)
     
 demo.launch(share=False)
